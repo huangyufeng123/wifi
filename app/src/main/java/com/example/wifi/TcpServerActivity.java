@@ -5,6 +5,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -24,6 +27,9 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.wifi.model.Wifi;
+import com.example.wifi.sql.MyDataBase;
 
 public class TcpServerActivity extends Activity implements OnClickListener {
 	private final String TAG = "TcpServerActivity";
@@ -56,6 +62,7 @@ public class TcpServerActivity extends Activity implements OnClickListener {
 	private int mSocketConnectState = STATE_CLOSED;
 
 	private String mRecycleMsg;
+	private MyDataBase dataBase;
 	private static final int MSG_TIME_SEND = 1;
 	private static final int MSG_SOCKET_CONNECT = 2;
 	private static final int MSG_SOCKET_DISCONNECT = 3;
@@ -83,7 +90,15 @@ public class TcpServerActivity extends Activity implements OnClickListener {
 					startAccept();
 					break;
 				case MSG_RECEIVE_DATA:
-					String text = mTvReceive.getText().toString() +"\r\n" + (String)msg.obj;
+					String receiveData = (String)msg.obj;
+					// 保存数据到数据库
+					List<Wifi> wifiList = new ArrayList<>();
+					wifiList.add(new Wifi(Double.parseDouble(receiveData), System.currentTimeMillis()));
+					dataBase.insertMultipleWifi(wifiList);
+					// 获取最新录入的数据
+					Wifi latestWifi = dataBase.getLatestWifi();
+					String text = "Latest Wifi: " + latestWifi.getWifi() + ", Time: " + latestWifi.getTime();
+//					String text = mTvReceive.getText().toString() +"\r\n" + (String)msg.obj;
 					mTvReceive.setText(text);
 					break;
 				default:
@@ -95,6 +110,7 @@ public class TcpServerActivity extends Activity implements OnClickListener {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		dataBase = new MyDataBase(this);
 		setContentView(R.layout.activity_server);
 		mServerState = (TextView) findViewById(R.id.serverState);
 		mBtnSet = (Button)findViewById(R.id.bt_server_set);
